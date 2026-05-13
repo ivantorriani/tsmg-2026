@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------
+# Requirements for src/midas_scripts/run_combined.py
+# ---------------------------------------------------------------
+
+# MiDaS — installed directly from the archived GitHub repo.
+# This provides the `midas` package (model_loader, transforms, etc.)
+# and the `utils` module used by run_combined.py.
+git+https://github.com/isl-org/MiDaS.git@master
+
+# Deep learning
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Object detection (YOLOv8)
+ultralytics>=8.0.0
+
+# Computer vision
+opencv-python>=4.8.0
+
+# Numerical computing
+numpy>=1.24.0
+
+# Camera capture (VideoStream)
+imutils>=0.5.4
+
+# MiDaS backbone dependencies (timm provides Swin, BEiT, LeViT, etc.)
+timm>=0.9.0
+
+# Jetson GPIO — only available on Jetson hardware.
+# Install manually on the Jetson; comment out on non-Jetson machines.
+Jetson.GPIO>=2.1.0
