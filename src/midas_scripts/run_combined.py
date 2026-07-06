@@ -141,7 +141,7 @@ def run_midas_process(
 # ----------------------------
 # GPIO utilities
 # ----------------------------
-def setup_gpio(enabled: bool, led_pin1: int, led_pin2: int) -> bool:
+def setup_gpio(enabled: bool, led_pin1: int, led_pin2: int, led_pin3: int) -> bool:
     """Initialize GPIO if requested and available."""
     if not enabled:
         print("GPIO disabled by argument.")
@@ -154,40 +154,37 @@ def setup_gpio(enabled: bool, led_pin1: int, led_pin2: int) -> bool:
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(led_pin1, GPIO.OUT, initial=GPIO.LOW)
     GPIO.setup(led_pin2, GPIO.OUT, initial=GPIO.LOW)
-    print(f"GPIO enabled. led_pin1={led_pin1}, led_pin2={led_pin2}")
+    GPIO.setup(led_pin3, GPIO.OUT, initial=GPIO.LOW)
+    print(f"GPIO enabled. led_pin1={led_pin1}, led_pin2={led_pin2}, led_pin3={led_pin3}")
     return True
 
 
-def write_gpio_states(gpio_enabled: bool, led_pin1: int, led_pin2: int, region_active: List[bool]) -> None:
+def write_gpio_states(gpio_enabled: bool, led_pin1: int, led_pin2: int, led_pin3: int, region_active: List[bool]) -> None:
     """
-    Drive two GPIO pins from the three active regions.
+    Drive three GPIO pins, one per zone.
 
-    Mapping copied from your first script intent:
-      top active    -> both pins HIGH
-      middle active -> led_pin1 HIGH
-      bottom active -> led_pin2 HIGH
-
-    This version computes final pin states first, avoiding conflicts where later LOW writes
-    accidentally override top_active.
+    Mapping:
+      top active    -> led_pin1 HIGH
+      middle active -> led_pin2 HIGH
+      bottom active -> led_pin3 HIGH
     """
     if not gpio_enabled:
         return
 
     top_active, middle_active, bottom_active = region_active
 
-    pin1_high = top_active or middle_active
-    pin2_high = top_active or bottom_active
-
-    GPIO.output(led_pin1, GPIO.HIGH if pin1_high else GPIO.LOW)
-    GPIO.output(led_pin2, GPIO.HIGH if pin2_high else GPIO.LOW)
+    GPIO.output(led_pin1, GPIO.HIGH if top_active else GPIO.LOW)
+    GPIO.output(led_pin2, GPIO.HIGH if middle_active else GPIO.LOW)
+    GPIO.output(led_pin3, GPIO.HIGH if bottom_active else GPIO.LOW)
 
 
-def cleanup_gpio(gpio_enabled: bool, led_pin1: int, led_pin2: int) -> None:
+def cleanup_gpio(gpio_enabled: bool, led_pin1: int, led_pin2: int, led_pin3: int) -> None:
     if not gpio_enabled:
         return
     try:
         GPIO.output(led_pin1, GPIO.LOW)
         GPIO.output(led_pin2, GPIO.LOW)
+        GPIO.output(led_pin3, GPIO.LOW)
         GPIO.cleanup()
     except Exception as exc:
         print(f"GPIO cleanup warning: {exc}")
@@ -383,6 +380,7 @@ def run_live(args: argparse.Namespace) -> None:
         enabled=not args.no_gpio,
         led_pin1=args.led_pin1,
         led_pin2=args.led_pin2,
+        led_pin3=args.led_pin3,
     )
 
     # Load YOLO model.
@@ -484,6 +482,7 @@ def run_live(args: argparse.Namespace) -> None:
                     gpio_enabled,
                     args.led_pin1,
                     args.led_pin2,
+                    args.led_pin3,
                     region_active,
                 )
 
@@ -551,7 +550,7 @@ def run_live(args: argparse.Namespace) -> None:
         if video_writer is not None:
             video_writer.release()
         cv2.destroyAllWindows()
-        cleanup_gpio(gpio_enabled, args.led_pin1, args.led_pin2)
+        cleanup_gpio(gpio_enabled, args.led_pin1, args.led_pin2, args.led_pin3)
         print("Finished")
 
 
@@ -598,8 +597,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--print_every", type=int, default=10, help="Print diagnostics every N frames")
 
     # GPIO
-    parser.add_argument("--led_pin1", type=int, default=7, help="Jetson GPIO BOARD pin for output 1")
-    parser.add_argument("--led_pin2", type=int, default=33, help="Jetson GPIO BOARD pin for output 2")
+    parser.add_argument("--led_pin1", type=int, default=7, help="Jetson GPIO BOARD pin for top zone (Nozzle 1)")
+    parser.add_argument("--led_pin2", type=int, default=33, help="Jetson GPIO BOARD pin for middle zone (Nozzle 2)")
+    parser.add_argument("--led_pin3", type=int, default=35, help="Jetson GPIO BOARD pin for bottom zone (Nozzle 3)")
     parser.add_argument("--no_gpio", action="store_true", help="Disable GPIO output, useful for testing off-Jetson")
 
     args = parser.parse_args()
