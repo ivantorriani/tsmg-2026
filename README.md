@@ -10,7 +10,11 @@ optionally used to suppress background clutter before a YOLOv8 canopy detector r
 are collapsed into a binary union mask, integrated over three horizontal zones aligned with the
 physical nozzle bar, and thresholded at 25% coverage to produce three independent GPIO signals.
 
-**Ivan Torriani** — Lead Researcher &nbsp;·&nbsp; **Dr. Fahim Khan** — Principal Investigator
+[**Ivan Torriani**](https://www.linkedin.com/in/ivan-torriani-3b875a331/) — Lead Researcher
+&nbsp;·&nbsp;
+[**Dr. Fahim Khan**](https://www.linkedin.com/in/fahimhkhan/) — Principal Investigator
+
+California Polytechnic State University, San Luis Obispo
 
 ## Repository layout
 
@@ -46,4 +50,4 @@ feeds the masked frame to the detector instead of the raw one.
 
 The methods and system design are complete and documented. Quantitative evaluation — throughput
 on target hardware, per-zone activation accuracy, and calibration error across a distance sweep —
-is still being collected; those tables are scaffolded on the project page and marked `TODO`.
+is still being collected, and the project page presents no results until it is.

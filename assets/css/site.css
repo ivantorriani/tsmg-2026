@@ -4,6 +4,7 @@
    ------------------------------------------------------------------ */
 
 :root {
+  color-scheme: light;
   --ink:        #1f2733;
   --ink-soft:   #4a5568;
   --ink-faint:  #5c6774;   /* >=4.5:1 on both #fff and the #eef1f5 caption bg */
@@ -312,18 +313,6 @@ h1, h2, h3, h4,
   padding: 1.05rem 1.25rem;
 }
 
-/* pending-data marker for un-measured results */
-.todo {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 0.78rem;
-  color: #8a6d1f;
-  background: var(--warn-bg);
-  border: 1px dashed var(--warn-rule);
-  border-radius: 3px;
-  padding: 0.1em 0.45em;
-  white-space: nowrap;
-}
-
 /* ---------- tech stack ---------- */
 
 .tech-stack-row {
@@ -416,54 +405,6 @@ h1, h2, h3, h4,
   .equation-block .eq { white-space: normal; }
 }
 
-/* ---------- dark mode ---------- */
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink:       #e6e9ee;
-    --ink-soft:  #b0b8c4;
-    --ink-faint: #8791a0;
-    --rule:      #2c3440;
-    --accent:    #6ccb95;
-    --accent-dk: #9fe0bb;
-    --accent-bg: #1b2b23;
-    --warn-bg:   #2b2617;
-    --warn-rule: #8a7530;
-    --code-bg:   #161b22;
-    --page:      #0f1319;
-  }
-
-  /* These tables live inside `.content`, where Bulma's
-     `.content table thead th` (0,2,2) sets color:#363636 — unreadable on a
-     dark header. Qualify with `.content` to outrank it. */
-  .table thead th, .table thead td,
-  .content .table thead th, .content .table thead td {
-    background: #1a212b;
-    color: var(--ink);
-  }
-  /* Bulma sets `.table { background-color: #fff }`. Striped rows override it,
-     but unstriped (odd) rows are transparent and would expose white behind
-     near-white text — so the table itself must go transparent too. */
-  .table { background-color: transparent; }
-  .table, .table td, .table th { border-color: var(--rule) !important; color: var(--ink); }
-  .state-high, .table td.state-high { color: #6ccb95; }
-  .state-low,  .table td.state-low  { color: #e08a6b; }
-  .table.is-striped tbody tr:not(.is-selected):nth-child(even) { background: #141a22; }
-  /* Bulma scopes its typography under `.content` (e.g. `.content h4`,
-     `.content strong`, `.content pre` at 0,1,1), which outranks bare element
-     or single-class selectors. Every dark-mode text override below must be
-     qualified to match, or it silently loses and leaves #363636/#4a4a4a. */
-  .content h1, .content h2, .content h3,
-  .content h4, .content h5, .content h6,
-  .content strong, .content b,
-  .content blockquote,
-  .title, .subtitle { color: var(--ink); }
-
-  .content pre, .content .code-excerpt pre, .code-excerpt pre { color: var(--ink); }
-
-  .code-excerpt .code-source { background: #1a212b; }
-  .publication-links .button.is-dark { background-color: #2b333f; }
-  .tech-stack-row .tag { background: var(--accent-bg); color: var(--accent-dk); }
-  .todo { color: #d8bd6a; }
-  .hero.teaser video { border-color: var(--rule); }
-}
+/* This page is intentionally light-only, matching the reference project
+   page. `color-scheme: light` (set on :root above) stops the browser from
+   auto-darkening form controls and scrollbars for dark-mode viewers. */

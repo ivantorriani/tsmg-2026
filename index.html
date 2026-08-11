@@ -32,14 +32,13 @@
               <span class="author-role">Lead Researcher</span>,
             </span>
             <span class="author-block">
-              Dr. Fahim Khan
+              <a href="https://www.linkedin.com/in/fahimhkhan/">Dr. Fahim Khan</a>
               <span class="author-role">Principal Investigator</span>
             </span>
           </div>
 
-          <!-- TODO: replace with the institutional affiliation line. -->
           <div class="is-size-6 publication-affiliation">
-            <span class="todo">TODO: institutional affiliation</span>
+            California Polytechnic State University, San Luis Obispo
           </div>
 
           <div class="publication-links">
@@ -55,13 +54,6 @@
                  class="external-link button is-normal is-rounded is-dark">
                 <span class="icon"><i class="fas fa-layer-group"></i></span>
                 <span>Depth Methods</span>
-              </a>
-            </span>
-            <span class="link-block">
-              <a href="docs/methods_led.md"
-                 class="external-link button is-normal is-rounded is-dark">
-                <span class="icon"><i class="fas fa-microchip"></i></span>
-                <span>Actuation Methods</span>
               </a>
             </span>
           </div>
@@ -158,14 +150,6 @@
             .stg  { font: 600 10.5px 'Google Sans', sans-serif; fill: #2f6f4e;
                     letter-spacing: 0.08em; }
             .cn   { stroke: #7b8794; stroke-width: 1.6; fill: none; }
-            @media (prefers-color-scheme: dark) {
-              .bx   { fill: #161b22; stroke: #3a4553; }
-              .bx-a { fill: #1b2b23; stroke: #6ccb95; }
-              .lbl  { fill: #e6e9ee; }
-              .sub  { fill: #8791a0; }
-              .stg  { fill: #6ccb95; }
-              .cn   { stroke: #8791a0; }
-            }
           </style>
         </defs>
 
@@ -589,16 +573,6 @@ result_rgb = np.where(foreground_mask[..., None] == 1, img_rgb, bg)</pre>
                 .hdr   { font: 600 11px 'Google Sans', sans-serif; fill: #7b8794;
                          letter-spacing: 0.08em; }
                 .cn2   { stroke: #cbd3dd; stroke-width: 1.4; stroke-dasharray: 3 3; }
-                @media (prefers-color-scheme: dark) {
-                  .fr   { stroke: #3a4553; }
-                  .zon  { fill: #161b22; stroke: #c96a4e; }
-                  .zact { fill: #1b2b23; stroke: #6ccb95; }
-                  .zlbl, .pin { fill: #e6e9ee; }
-                  .zsub, .hdr { fill: #8791a0; }
-                  .zon-t { fill: #c96a4e; }
-                  .zact-t{ fill: #6ccb95; }
-                  .cn2  { stroke: #3a4553; }
-                }
               </style>
             </defs>
 
@@ -881,136 +855,6 @@ last_time = now</pre>
 
 <hr class="section-divider">
 
-<!-- ============================ RESULTS ============================ -->
-<!-- ==================================================================
-     RESULTS SCAFFOLD — every value below is a placeholder.
-     Replace each `<span class="todo">…</span>` with measured data before
-     publishing. Do not present this section publicly while TODOs remain.
-     ================================================================== -->
-<section class="section">
-  <div class="container is-max-desktop">
-    <h2 class="title is-3 has-text-centered">Results</h2>
-    <div class="content">
-
-      <div class="notification is-light limitations content">
-        <p>
-          <strong>Evaluation in progress.</strong> The tables below define the measurement
-          protocol; entries marked <span class="todo">TODO</span> are not yet collected. No
-          numbers in this section should be cited until they are filled in.
-        </p>
-      </div>
-
-      <h3 class="title is-4">Depth model throughput on target hardware</h3>
-      <p>
-        Both DPT variants timed on the deployment Jetson under identical camera input, measured
-        as EMA frame rate over the full pipeline.
-      </p>
-      <div class="table-container">
-        <table class="table is-bordered is-striped is-fullwidth">
-          <thead>
-            <tr><th>Model variant</th><th>Backbone params</th><th>Depth-only latency (ms)</th>
-                <th>Full-pipeline FPS</th><th>Peak GPU memory</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>dpt_swin2_tiny_256</code></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-            </tr>
-            <tr>
-              <td><code>dpt_beit_large_512</code></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3 class="title is-4">Zone activation accuracy</h3>
-      <p>
-        Per-zone confusion against hand-labelled ground truth on held-out field footage, scored
-        frame-by-frame on the binary Active/Inactive decision.
-      </p>
-      <div class="table-container">
-        <table class="table is-bordered is-striped is-fullwidth">
-          <thead>
-            <tr><th>Zone</th><th>TP</th><th>TN</th><th>FP</th><th>FN</th>
-                <th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Top (Nozzle 1)</td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-            <tr><td>Middle (Nozzle 2)</td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-            <tr><td>Bottom (Nozzle 3)</td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3 class="title is-4">Effect of depth-based background masking</h3>
-      <p>
-        Detection quality with <code>--detect_on_depth_mask</code> enabled versus disabled,
-        isolating whether depth gating actually suppresses out-of-row false positives.
-      </p>
-      <div class="table-container">
-        <table class="table is-bordered is-striped is-fullwidth">
-          <thead>
-            <tr><th>Configuration</th><th>Precision</th><th>Recall</th>
-                <th>False activations / min</th><th>Added latency (ms)</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Raw frame &rarr; detector</td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-            <tr><td>Depth-masked frame &rarr; detector</td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3 class="title is-4">Calibration error against ground-truth distance</h3>
-      <p>
-        Refined power-law estimate versus tape-measured standoff across a distance sweep. The
-        calibration point itself (2&nbsp;ft) is exact by construction; the question is how the
-        estimate degrades away from it.
-      </p>
-      <div class="table-container">
-        <table class="table is-bordered is-striped is-fullwidth">
-          <thead>
-            <tr><th>True distance (ft)</th><th>Linear estimate (ft)</th>
-                <th>Refined estimate (ft)</th><th>Absolute error (ft)</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>1.0</td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-            <tr><td>2.0 <em>(calibration point)</em></td><td>2.00</td><td>2.00</td><td>0.00</td></tr>
-            <tr><td>3.0</td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-            <tr><td>4.0</td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-            <tr><td>6.0</td><td><span class="todo">TODO</span></td>
-              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<hr class="section-divider">
-
 <!-- =========================== TECH STACK =========================== -->
 <section class="section">
   <div class="container is-max-desktop">
@@ -1084,7 +928,9 @@ last_time = now</pre>
         </div>
       </div>
       <div class="team-row">
-        <div class="team-name">Dr. Fahim Khan</div>
+        <div class="team-name">
+          <a href="https://www.linkedin.com/in/fahimhkhan/">Dr. Fahim Khan</a>
+        </div>
         <div class="team-role">
           Principal Investigator &mdash; research direction and supervision.
         </div>
