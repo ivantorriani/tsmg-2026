@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Depth-Guided Computer Vision for Precision Agricultural Fertilizer Application</title>
+  <meta name="description" content="A real-time monocular depth and canopy detection pipeline driving zone-resolved fertilizer nozzle actuation on NVIDIA Jetson edge hardware.">
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+
+<!-- ============================== HERO ============================== -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+
+          <p class="publication-venue">TSMG &middot; 2026 Research Program</p>
+
+          <h1 class="title is-1 publication-title">
+            Depth-Guided Computer Vision for Precision Agricultural Fertilizer Application
+          </h1>
+
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://www.linkedin.com/in/ivan-torriani-3b875a331/">Ivan Torriani</a>
+              <span class="author-role">Lead Researcher</span>,
+            </span>
+            <span class="author-block">
+              Dr. Fahim Khan
+              <span class="author-role">Principal Investigator</span>
+            </span>
+          </div>
+
+          <!-- TODO: replace with the institutional affiliation line. -->
+          <div class="is-size-6 publication-affiliation">
+            <span class="todo">TODO: institutional affiliation</span>
+          </div>
+
+          <div class="publication-links">
+            <span class="link-block">
+              <a href="https://github.com/ivantorriani/tsmg-2026"
+                 class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fab fa-github"></i></span>
+                <span>Code</span>
+              </a>
+            </span>
+            <span class="link-block">
+              <a href="docs/methods_midas.md"
+                 class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fas fa-layer-group"></i></span>
+                <span>Depth Methods</span>
+              </a>
+            </span>
+            <span class="link-block">
+              <a href="docs/methods_led.md"
+                 class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fas fa-microchip"></i></span>
+                <span>Actuation Methods</span>
+              </a>
+            </span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= TEASER ============================= -->
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <video id="teaser" autoplay muted loop playsinline preload="metadata">
+        <source src="assets/video/demo.mp4" type="video/mp4">
+      </video>
+      <p class="teaser-caption">
+        Offline validation run. The frame is partitioned into three horizontal nozzle zones;
+        each zone reports its live canopy coverage ratio and switches to
+        <span class="state-high">Active</span> once coverage exceeds 25%. Zone state maps
+        directly to GPIO output on the Jetson.
+      </p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ============================ ABSTRACT ============================ -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Abstract</h2>
+    <div class="content">
+      <p>
+        Broadcast fertilizer application treats a field as uniform, delivering the same rate to
+        bare soil that it delivers to dense canopy. The waste is both economic and environmental,
+        and the fix — applying only where plant material actually is — requires a perception
+        system that runs in real time on a moving implement, outdoors, without a network
+        connection or a depth sensor budget.
+      </p>
+      <p>
+        This work develops a perception-to-actuation pipeline that resolves canopy presence
+        spatially and drives physical nozzles accordingly, using a single RGB camera on an
+        NVIDIA Jetson. Monocular depth is estimated with a Dense Prediction Transformer
+        (MiDaS DPT), which yields a relative inverse-depth map at frame rate without stereo
+        rigs or LiDAR. Because that map is affine-invariant rather than metric, we introduce a
+        single-reference calibration procedure that recovers an approximate physical distance
+        from a power-law fit, giving the system a usable proximity signal from one measurement
+        at a known 2&nbsp;ft standoff. The depth map serves a second purpose: thresholded and
+        morphologically cleaned, it suppresses background clutter before detection, so distant
+        vegetation outside the treatment row cannot trigger a nozzle.
+      </p>
+      <p>
+        Canopy is then localized by a YOLOv8 detector fine-tuned on a custom canopy dataset. Rather
+        than targeting individual plants — which would demand actuation precision the hardware does
+        not have — detections are reduced to a union mask and integrated over three horizontal
+        zones aligned with the physical nozzle bar. A zone opens when canopy covers more than 25%
+        of it. This zone abstraction is the central design choice of the system: it degrades
+        gracefully under partial or noisy detection, and it maps onto a handful of GPIO lines
+        rather than a servo-aimed boom.
+      </p>
+      <p>
+        The full pipeline runs per frame on the Jetson under FP16 with fused detector layers,
+        driving three GPIO outputs that correspond one-to-one with nozzle zones. We document the
+        hardware bring-up path that produced this design, including an earlier two-pin
+        combinatorial encoding that was replaced after it proved unable to represent
+        simultaneously active zones without transient conflicts.
+      </p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- =========================== HOW IT WORKS ========================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">How It Works</h2>
+
+    <div class="figure-block">
+      <svg viewBox="0 0 960 400" role="img"
+           aria-label="Pipeline diagram: camera frame to depth estimation, background masking, canopy detection, zone integration, and GPIO nozzle output.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#7b8794"/>
+          </marker>
+          <style>
+            .bx   { fill: #f6f8fa; stroke: #cbd3dd; stroke-width: 1.5; rx: 8; }
+            .bx-a { fill: #eef5f1; stroke: #2f6f4e; stroke-width: 1.8; rx: 8; }
+            .lbl  { font: 600 13.5px 'Google Sans', sans-serif; fill: #1f2733; }
+            .sub  { font: 11.5px 'SFMono-Regular', Consolas, monospace; fill: #7b8794; }
+            .stg  { font: 600 10.5px 'Google Sans', sans-serif; fill: #2f6f4e;
+                    letter-spacing: 0.08em; }
+            .cn   { stroke: #7b8794; stroke-width: 1.6; fill: none; }
+            @media (prefers-color-scheme: dark) {
+              .bx   { fill: #161b22; stroke: #3a4553; }
+              .bx-a { fill: #1b2b23; stroke: #6ccb95; }
+              .lbl  { fill: #e6e9ee; }
+              .sub  { fill: #8791a0; }
+              .stg  { fill: #6ccb95; }
+              .cn   { stroke: #8791a0; }
+            }
+          </style>
+        </defs>
+
+        <!-- Row 1 -->
+        <text class="stg" x="30" y="30">PERCEPTION</text>
+
+        <rect class="bx" x="30" y="46" width="195" height="62"/>
+        <text class="lbl" x="127" y="72" text-anchor="middle">Camera frame</text>
+        <text class="sub" x="127" y="91" text-anchor="middle">imutils VideoStream, BGR</text>
+
+        <rect class="bx-a" x="265" y="46" width="195" height="62"/>
+        <text class="lbl" x="362" y="72" text-anchor="middle">MiDaS DPT</text>
+        <text class="sub" x="362" y="91" text-anchor="middle">dpt_swin2_tiny_256</text>
+
+        <rect class="bx" x="500" y="46" width="195" height="62"/>
+        <text class="lbl" x="597" y="72" text-anchor="middle">Inverse depth map</text>
+        <text class="sub" x="597" y="91" text-anchor="middle">bicubic to frame size</text>
+
+        <rect class="bx" x="735" y="46" width="195" height="62"/>
+        <text class="lbl" x="832" y="72" text-anchor="middle">Background mask</text>
+        <text class="sub" x="832" y="91" text-anchor="middle">threshold + morphology</text>
+
+        <line class="cn" x1="225" y1="77" x2="258" y2="77" marker-end="url(#ar)"/>
+        <line class="cn" x1="460" y1="77" x2="493" y2="77" marker-end="url(#ar)"/>
+        <line class="cn" x1="695" y1="77" x2="728" y2="77" marker-end="url(#ar)"/>
+
+        <!-- wrap connector: end of row 1 -> left edge of row 2, routed
+             outside the stage label so the two never collide -->
+        <path class="cn" d="M 930 108 L 930 142 L 14 142 L 14 227 L 23 227"
+              marker-end="url(#ar)"/>
+
+        <!-- Row 2 -->
+        <text class="stg" x="30" y="180">DETECTION &amp; INTEGRATION</text>
+
+        <rect class="bx-a" x="30" y="196" width="195" height="62"/>
+        <text class="lbl" x="127" y="222" text-anchor="middle">YOLOv8 detector</text>
+        <text class="sub" x="127" y="241" text-anchor="middle">canopies_latest.pt</text>
+
+        <rect class="bx" x="265" y="196" width="195" height="62"/>
+        <text class="lbl" x="362" y="222" text-anchor="middle">Detection union mask</text>
+        <text class="sub" x="362" y="241" text-anchor="middle">binary, class 0</text>
+
+        <rect class="bx" x="500" y="196" width="195" height="62"/>
+        <text class="lbl" x="597" y="222" text-anchor="middle">Zone coverage</text>
+        <text class="sub" x="597" y="241" text-anchor="middle">3 bands, ratio &gt; 0.25</text>
+
+        <rect class="bx-a" x="735" y="196" width="195" height="62"/>
+        <text class="lbl" x="832" y="222" text-anchor="middle">GPIO output</text>
+        <text class="sub" x="832" y="241" text-anchor="middle">BOARD 7 / 33 / 35</text>
+
+        <line class="cn" x1="225" y1="227" x2="258" y2="227" marker-end="url(#ar)"/>
+        <line class="cn" x1="460" y1="227" x2="493" y2="227" marker-end="url(#ar)"/>
+        <line class="cn" x1="695" y1="227" x2="728" y2="227" marker-end="url(#ar)"/>
+
+        <!-- Row 3: actuation -->
+        <path class="cn" d="M 832 258 L 832 300" marker-end="url(#ar)"/>
+        <text class="stg" x="30" y="330">ACTUATION</text>
+
+        <rect class="bx" x="600" y="308" width="330" height="58"/>
+        <text class="lbl" x="765" y="332" text-anchor="middle">Three fertilizer nozzles</text>
+        <text class="sub" x="765" y="351" text-anchor="middle">one per vertical zone</text>
+
+        <text class="sub" x="30" y="356">Depth gating of the detector input is optional:</text>
+        <text class="sub" x="30" y="374">--use_depth_mask, --detect_on_depth_mask</text>
+      </svg>
+
+      <p class="figure-caption">
+        <strong>Figure 1. End-to-end pipeline.</strong> A single RGB frame is passed through
+        MiDaS DPT to obtain a relative inverse-depth map, which is upsampled bicubically back to
+        native resolution. That map optionally suppresses background before the YOLOv8 canopy
+        detector runs. Detections are collapsed into a binary union mask, integrated over three
+        horizontal zones, and thresholded at 25% coverage to produce three independent GPIO
+        signals. Every stage executes once per frame inside a single
+        <code>torch.no_grad()</code> loop.
+      </p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ======================= RESEARCH SUBSYSTEMS ====================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Research Subsystems</h2>
+
+    <!-- ---------------- 2.1 Depth estimation ---------------- -->
+    <div class="subsystem-block">
+      <h3 class="title is-4"><span class="subsystem-index">2.1</span>Monocular Depth Estimation</h3>
+      <div class="content">
+        <p>
+          Depth is estimated with MiDaS, a monocular framework that produces relative inverse
+          depth from a single RGB image. We use the Dense Prediction Transformer (DPT)
+          architecture, which pairs a transformer encoder with a convolutional decoder: features
+          are extracted from four intermediate transformer layers and fused through successive
+          Reassemble and RefineNet blocks, then progressively upsampled and passed through a
+          convolutional head. The output is constrained non-negative by a ReLU.
+        </p>
+        <p>
+          Two variants were evaluated. The BEiT-Large model served as a high-accuracy reference
+          during development; the Swin&nbsp;V2 Tiny model is what actually deploys to the Jetson,
+          where its 256&nbsp;&times;&nbsp;256 square input and far smaller backbone are what make
+          frame-rate operation possible.
+        </p>
+
+        <p class="table-title"><strong>Table 1.</strong> Evaluated DPT model variants.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead>
+              <tr>
+                <th>Model identifier</th><th>Backbone</th><th>Input resolution</th>
+                <th>Aspect ratio preserved</th><th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>dpt_beit_large_512</code></td><td>BEiT ViT-L/16</td>
+                <td>512 &times; 512</td><td>Yes</td><td>High-accuracy reference</td>
+              </tr>
+              <tr>
+                <td><code>dpt_swin2_tiny_256</code></td><td>Swin Transformer V2 Tiny</td>
+                <td>256 &times; 256</td><td>No (square crop)</td><td>Jetson deployment</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Inference runs under <code>torch.no_grad()</code>. On CUDA hardware the model is cast to
+          half precision and moved to <code>torch.channels_last</code> memory layout, which
+          reduces memory bandwidth on the Jetson's shared-memory architecture. The raw prediction
+          is upsampled back to native frame resolution with bicubic interpolation before any
+          downstream use, so the depth map and the RGB frame remain pixel-aligned.
+        </p>
+
+        <p class="table-title"><strong>Table 2.</strong> Input preprocessing and inference parameters.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Step</th><th>Parameter</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Resize method</td><td>Mode</td><td>Minimal (pad to multiple of 32)</td></tr>
+              <tr><td>Normalization</td><td>Per-channel mean</td><td>[0.5, 0.5, 0.5]</td></tr>
+              <tr><td>Normalization</td><td>Per-channel std</td><td>[0.5, 0.5, 0.5]</td></tr>
+              <tr><td>Output upsample</td><td>Interpolation mode</td><td>Bicubic</td></tr>
+              <tr><td>FP16 optimization</td><td>Memory layout</td><td><code>torch.channels_last</code></td></tr>
+              <tr><td>Gradient computation</td><td>Context</td><td><code>torch.no_grad()</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-excerpt">
+<pre>prediction = model.forward(sample)
+prediction = (
+    torch.nn.functional.interpolate(
+        prediction.unsqueeze(1),
+        size=target_size[::-1],
+        mode="bicubic",
+        align_corners=False,
+    )
+    .squeeze()
+    .detach()
+    .cpu()
+    .numpy()
+)</pre>
+          <span class="code-source">src/midas_scripts/run_combined.py</span>
+        </div>
+
+        <div class="notification is-light limitations content">
+          <p><strong>Limitations:</strong></p>
+          <ul>
+            <li>DPT output is affine-invariant. Absolute scale is not recoverable from the network
+                alone, which motivates the calibration in &sect;2.2.</li>
+            <li>The Swin&nbsp;V2 Tiny variant does not preserve aspect ratio; non-square frames are
+                distorted before inference, and the distortion varies with camera mounting.</li>
+            <li>Depth is re-estimated independently every frame. There is no temporal filtering, so
+                per-frame depth noise propagates directly into the masking stage.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 2.2 Calibration ---------------- -->
+    <div class="subsystem-block">
+      <h3 class="title is-4"><span class="subsystem-index">2.2</span>Depth-to-Distance Calibration</h3>
+      <div class="content">
+        <p>
+          MiDaS returns relative inverse depth, not metres or feet. To obtain a usable proximity
+          signal we calibrate against a single reference measurement: an object placed at a known
+          2&nbsp;ft standoff, with the maximum depth value across the frame recorded at that
+          distance. The ratio of the two yields a linear scale factor.
+        </p>
+
+        <div class="equation-block">
+          <span class="eq">
+            <var>metric</var> = SCENE_1_SHIFT &times; <var>d</var><sub>max</sub>
+          </span>
+          <span class="eq-where">
+            where SCENE_1_SHIFT = 0.00176834659 ft per depth unit, derived as
+            2&nbsp;ft &divide; <var>d</var><sub>max</sub> at the calibration distance.
+          </span>
+        </div>
+
+        <p>
+          A purely linear model is a poor fit, because inverse depth and physical distance are
+          related non-linearly — roughly <var>D</var>&nbsp;=&nbsp;1&nbsp;/&nbsp;(<var>ad</var>&nbsp;+&nbsp;<var>b</var>).
+          We therefore refine the estimate with a power law anchored at the same reference point:
+        </p>
+
+        <div class="equation-block">
+          <span class="eq">
+            <var>D</var><sub>refined</sub> = 2.0 &times;
+            ( <var>d</var><sub>max, scene 1</sub> / <var>d</var><sub>max</sub> )
+            <sup><var>s</var></sup>
+          </span>
+          <span class="eq-where">
+            with <var>d</var><sub>max, scene 1</sub> = 1130.5822 (the calibrated reference depth)
+            and sensitivity exponent <var>s</var> = 3.2, tuned empirically. The exponent controls
+            how sharply estimated distance falls off with depth, and was chosen to maximize
+            resolution at close range where canopy proximity actually matters.
+          </span>
+        </div>
+
+        <p class="table-title"><strong>Table 3.</strong> Calibration constants.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Parameter</th><th>Symbol</th><th>Value</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Scene shift constant</td><td><code>SCENE_1_SHIFT</code></td><td>0.00176834659</td>
+                  <td>Linear scale factor (ft / depth unit) at the 2 ft reference</td></tr>
+              <tr><td>Reference depth value</td><td><code>dmax_scene_1</code></td><td>1130.5822</td>
+                  <td>Maximum depth output recorded at calibration distance</td></tr>
+              <tr><td>Reference distance</td><td>&mdash;</td><td>2.0 ft</td>
+                  <td>Physical standoff used for calibration</td></tr>
+              <tr><td>Sensitivity exponent</td><td><code>sensitivity</code></td><td>3.2</td>
+                  <td>Power-law exponent for the refined distance estimate</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          A binary proximity conclusion is derived from the first-order estimate: when the
+          reflected metric value falls below zero — indicating the object is nearer than the
+          calibration reference — the frame is labelled
+          <em>&ldquo;Object Detected Close to Camera.&rdquo;</em>
+        </p>
+
+        <div class="notification is-light limitations content">
+          <p><strong>Limitations:</strong></p>
+          <ul>
+            <li>Calibration rests on a <em>single</em> reference measurement at one distance. The
+                power-law exponent is fitted by hand rather than regressed over a distance sweep,
+                so error away from 2&nbsp;ft is uncharacterized.</li>
+            <li>Constants are scene-specific. Changing camera, lens, or mounting height
+                invalidates <code>SCENE_1_SHIFT</code> and requires re-calibration.</li>
+            <li>Using frame-wide <var>d</var><sub>max</sub> makes the estimate sensitive to a
+                single bright or near outlier pixel anywhere in view.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 2.3 Background segmentation ---------------- -->
+    <div class="subsystem-block">
+      <h3 class="title is-4"><span class="subsystem-index">2.3</span>Depth-Based Background Segmentation</h3>
+      <div class="content">
+        <p>
+          Field scenes contain vegetation well outside the treatment row. To stop that clutter from
+          reaching the detector, pixels whose inverse depth falls below a fixed threshold are
+          classified as background and replaced with solid black. The raw threshold mask is noisy,
+          so it is cleaned with a morphological opening (removing isolated foreground speckle)
+          followed by a closing (filling small holes inside the canopy region).
+        </p>
+
+        <p class="table-title"><strong>Table 4.</strong> Depth masking parameters.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Parameter</th><th>Value</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>Depth threshold</td><td>1130.5822</td>
+                  <td>Foreground / background boundary in inverse depth units</td></tr>
+              <tr><td>Morphological kernel</td><td>5 &times; 5 (ones)</td>
+                  <td>Structuring element for opening and closing</td></tr>
+              <tr><td>Morphological opening</td><td>Applied first</td>
+                  <td>Removes small foreground noise</td></tr>
+              <tr><td>Morphological closing</td><td>Applied second</td>
+                  <td>Fills small holes in the foreground mask</td></tr>
+              <tr><td>Background fill</td><td>RGB = [0, 0, 0]</td>
+                  <td>Replaces background pixels with black</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-excerpt">
+<pre>background_mask = (depth_map &lt; depth_threshold).astype(np.uint8)
+kernel = np.ones((5, 5), np.uint8)
+background_mask = cv2.morphologyEx(background_mask, cv2.MORPH_OPEN, kernel)
+background_mask = cv2.morphologyEx(background_mask, cv2.MORPH_CLOSE, kernel)
+
+foreground_mask = 1 - background_mask
+bg = np.full_like(img_rgb, bg_color, dtype=img_rgb.dtype)
+result_rgb = np.where(foreground_mask[..., None] == 1, img_rgb, bg)</pre>
+          <span class="code-source">src/midas_scripts/run_combined.py &mdash; solid_background()</span>
+        </div>
+
+        <p>
+          Masking is deliberately decoupled from detection. Two independent flags control it:
+          <code>--use_depth_mask</code> produces the masked frame, while
+          <code>--detect_on_depth_mask</code> decides whether the detector consumes the masked
+          frame or the raw one. This lets masking be evaluated as a display aid and as a detection
+          gate separately, without rebuilding the pipeline.
+        </p>
+
+        <div class="notification is-light limitations content">
+          <p><strong>Limitations:</strong></p>
+          <ul>
+            <li>The threshold is a fixed constant, not adaptive. Under lighting or scene changes
+                that shift the depth distribution, it will clip foreground or admit background.</li>
+            <li>Masking to black creates hard artificial edges. The detector was not fine-tuned on
+                masked imagery, so these edges are out of distribution for it.</li>
+            <li>A 5&nbsp;&times;&nbsp;5 kernel is small relative to canopy structure; thin stems
+                and leaf tips are frequently removed by the opening step.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 2.4 Detection ---------------- -->
+    <div class="subsystem-block">
+      <h3 class="title is-4"><span class="subsystem-index">2.4</span>Canopy Detection</h3>
+      <div class="content">
+        <p>
+          Canopy localization uses a YOLOv8 detector fine-tuned on a custom canopy dataset. At
+          load time the model is moved to GPU, its Conv+BatchNorm layers are folded together via
+          <code>model.fuse()</code>, and inference is run in half precision — both throughput
+          optimizations that matter on a power-constrained Jetson.
+        </p>
+
+        <p class="table-title"><strong>Table 5.</strong> Detector configuration.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Parameter</th><th>Value</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Weights</td><td><code>canopies_latest.pt</code></td><td>Custom-trained canopy detector</td></tr>
+              <tr><td>Confidence threshold</td><td>0.5</td><td>Minimum score to accept a detection</td></tr>
+              <tr><td>Target class</td><td>0 (canopy)</td><td>Only this class drives actuation</td></tr>
+              <tr><td>Inference precision</td><td>FP16</td><td>Half-float on CUDA</td></tr>
+              <tr><td>Layer fusion</td><td>Enabled</td><td><code>model.fuse()</code> merges Conv+BN</td></tr>
+              <tr><td>Device</td><td>CUDA (GPU 0)</td><td>Falls back to CPU if unavailable</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Every accepted box is rasterized into a shared binary mask. This union representation is
+          what makes the downstream logic robust: overlapping detections of the same plant
+          contribute their area once rather than double-counting, and the zone integrator never
+          needs to reason about individual box identity.
+        </p>
+
+        <div class="notification is-light limitations content">
+          <p><strong>Limitations:</strong></p>
+          <ul>
+            <li>Axis-aligned boxes over-estimate area for sparse or diagonally-oriented canopy,
+                inflating the coverage ratio relative to true leaf area.</li>
+            <li>A single fixed confidence threshold of 0.5 is applied regardless of zone, range,
+                or lighting.</li>
+            <li>Detection is per-frame with no tracking, so a plant that flickers below threshold
+                for one frame briefly closes its nozzle.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 2.5 Zone analysis ---------------- -->
+    <div class="subsystem-block">
+      <h3 class="title is-4"><span class="subsystem-index">2.5</span>Spatial Zone Analysis</h3>
+      <div class="content">
+        <p>
+          The frame is divided into three equal horizontal bands aligned with the physical nozzle
+          bar. For each band we compute the fraction of its pixels that lie inside at least one
+          detection:
+        </p>
+
+        <div class="equation-block">
+          <span class="eq">
+            coverage<sub><var>i</var></sub> =
+            (detected pixels in zone <var>i</var>) / (total pixels in zone <var>i</var>)
+          </span>
+          <span class="eq-where">
+            Zone <var>i</var> is marked <strong>Active</strong> when
+            coverage<sub><var>i</var></sub> &gt; 0.25. The threshold was set empirically to trade
+            sensitivity against false activation from partial or distant canopy.
+          </span>
+        </div>
+
+        <p class="table-title"><strong>Table 6.</strong> Nozzle zone definitions.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Zone</th><th>Label</th><th>Row range</th><th>Fraction of frame height</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Top</td><td>0 to H/3</td><td>Upper third</td></tr>
+              <tr><td>2</td><td>Middle</td><td>H/3 to 2H/3</td><td>Middle third</td></tr>
+              <tr><td>3</td><td>Bottom</td><td>2H/3 to H</td><td>Lower third</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="figure-block">
+          <svg viewBox="0 0 900 300" role="img"
+               aria-label="Diagram of a frame split into three horizontal zones with coverage ratios and the resulting GPIO pin states.">
+            <defs>
+              <style>
+                .fr    { fill: none; stroke: #cbd3dd; stroke-width: 2; }
+                .zon   { fill: #f6f8fa; stroke: #a2452f; stroke-width: 2; }
+                .zact  { fill: #eef5f1; stroke: #2f6f4e; stroke-width: 2.5; }
+                .zlbl  { font: 600 14px 'Google Sans', sans-serif; fill: #1f2733; }
+                .zsub  { font: 12px 'SFMono-Regular', Consolas, monospace; fill: #7b8794; }
+                .zon-t { font: 600 12.5px 'Google Sans', sans-serif; fill: #a2452f; }
+                .zact-t{ font: 600 12.5px 'Google Sans', sans-serif; fill: #2f6f4e; }
+                .pin   { font: 12.5px 'SFMono-Regular', Consolas, monospace; fill: #1f2733; }
+                .hdr   { font: 600 11px 'Google Sans', sans-serif; fill: #7b8794;
+                         letter-spacing: 0.08em; }
+                .cn2   { stroke: #cbd3dd; stroke-width: 1.4; stroke-dasharray: 3 3; }
+                @media (prefers-color-scheme: dark) {
+                  .fr   { stroke: #3a4553; }
+                  .zon  { fill: #161b22; stroke: #c96a4e; }
+                  .zact { fill: #1b2b23; stroke: #6ccb95; }
+                  .zlbl, .pin { fill: #e6e9ee; }
+                  .zsub, .hdr { fill: #8791a0; }
+                  .zon-t { fill: #c96a4e; }
+                  .zact-t{ fill: #6ccb95; }
+                  .cn2  { stroke: #3a4553; }
+                }
+              </style>
+            </defs>
+
+            <text class="hdr" x="30" y="26">FRAME PARTITION</text>
+            <text class="hdr" x="470" y="26">ZONE STATE</text>
+            <text class="hdr" x="700" y="26">GPIO (BOARD)</text>
+
+            <!-- frame -->
+            <rect class="fr" x="30" y="40" width="380" height="228"/>
+
+            <!-- zone 1: active -->
+            <rect class="zact" x="30" y="40" width="380" height="76"/>
+            <text class="zlbl" x="46" y="70">Nozzle 1 &mdash; Top</text>
+            <text class="zsub" x="46" y="92">coverage 41.6%</text>
+
+            <!-- zone 2: inactive -->
+            <rect class="zon" x="30" y="116" width="380" height="76"/>
+            <text class="zlbl" x="46" y="146">Nozzle 2 &mdash; Middle</text>
+            <text class="zsub" x="46" y="168">coverage 12.3%</text>
+
+            <!-- zone 3: active -->
+            <rect class="zact" x="30" y="192" width="380" height="76"/>
+            <text class="zlbl" x="46" y="222">Nozzle 3 &mdash; Bottom</text>
+            <text class="zsub" x="46" y="244">coverage 68.9%</text>
+
+            <!-- state column -->
+            <line class="cn2" x1="410" y1="78"  x2="465" y2="78"/>
+            <line class="cn2" x1="410" y1="154" x2="465" y2="154"/>
+            <line class="cn2" x1="410" y1="230" x2="465" y2="230"/>
+
+            <text class="zact-t" x="470" y="83">ACTIVE   &gt; 0.25</text>
+            <text class="zon-t"  x="470" y="159">INACTIVE &le; 0.25</text>
+            <text class="zact-t" x="470" y="235">ACTIVE   &gt; 0.25</text>
+
+            <!-- pin column -->
+            <line class="cn2" x1="640" y1="78"  x2="695" y2="78"/>
+            <line class="cn2" x1="640" y1="154" x2="695" y2="154"/>
+            <line class="cn2" x1="640" y1="230" x2="695" y2="230"/>
+
+            <text class="pin" x="700" y="83">pin 7  &rarr; <tspan fill="#2f6f4e" font-weight="700">HIGH</tspan></text>
+            <text class="pin" x="700" y="159">pin 33 &rarr; <tspan fill="#a2452f" font-weight="700">LOW</tspan></text>
+            <text class="pin" x="700" y="235">pin 35 &rarr; <tspan fill="#2f6f4e" font-weight="700">HIGH</tspan></text>
+          </svg>
+
+          <p class="figure-caption">
+            <strong>Figure 2. Zone integration and pin mapping.</strong> Coverage is integrated
+            independently per band, so a densely covered bottom zone and an empty middle zone
+            produce independent nozzle decisions in the same frame. Coverage values shown are
+            illustrative of the decision rule, not measured results.
+          </p>
+        </div>
+
+        <div class="code-excerpt">
+<pre>region_area = region_h * w
+covered_pixels = int(det_mask[y1_area:y2_area, :].sum())
+coverage_ratio = covered_pixels / max(region_area, 1)
+
+coverage_ratios[i] = coverage_ratio
+region_active[i] = coverage_ratio &gt; coverage_threshold</pre>
+          <span class="code-source">src/midas_scripts/run_combined.py &mdash; compute_region_activity()</span>
+        </div>
+
+        <div class="notification is-light limitations content">
+          <p><strong>Limitations:</strong></p>
+          <ul>
+            <li>Zones are fixed equal thirds of the image, not calibrated to the physical spray
+                geometry of the nozzle bar. The mapping from image row to ground position depends
+                on camera pitch and height, which are not modelled.</li>
+            <li>A hard 25% threshold produces chatter when coverage hovers near the boundary; no
+                hysteresis or debounce is applied.</li>
+            <li>Coverage is a pure area statistic — it cannot distinguish one dense plant from
+                several sparse ones within a zone.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 2.6 GPIO actuation ---------------- -->
+    <div class="subsystem-block">
+      <h3 class="title is-4"><span class="subsystem-index">2.6</span>GPIO Actuation and Hardware Bring-Up</h3>
+      <div class="content">
+        <p>
+          Actuation is the point where perception becomes physical. Output runs on an NVIDIA Jetson
+          through <code>Jetson.GPIO</code> using the BOARD pin convention, which addresses physical
+          connector positions rather than SoC GPIO numbers. Pins initialize LOW, and a cleanup
+          routine drives them LOW and releases the lines on exit — including on exception — so a
+          crash cannot leave a nozzle latched open.
+        </p>
+
+        <h4 class="title is-5">Bring-up progression</h4>
+        <p>
+          Before touching the detection pipeline, GPIO behaviour was validated by a series of
+          standalone scripts, each isolating one unknown.
+        </p>
+
+        <p class="table-title"><strong>Table 7.</strong> GPIO validation script progression.</p>
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead>
+              <tr><th>Stage</th><th>Script</th><th>Library</th><th>Pins</th><th>Behaviour</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td><code>led_test2.py</code></td><td><code>gpiod</code> (v2 API)</td>
+                  <td>1 (offset 144)</td><td>Single HIGH/LOW toggle, 2 s intervals</td>
+                  <td>Confirm basic electrical continuity</td></tr>
+              <tr><td>2</td><td><code>ledtest3.py</code></td><td><code>gpiod</code> (legacy API)</td>
+                  <td>1 (line 105)</td><td>Continuous 1 s toggle loop</td>
+                  <td>Verify sustained operation</td></tr>
+              <tr><td>3</td><td><code>ledtest4.py</code></td><td><code>Jetson.GPIO</code></td>
+                  <td>1 (BOARD 7)</td><td>Continuous 1 s toggle loop</td>
+                  <td>Confirm Jetson.GPIO and BOARD convention</td></tr>
+              <tr><td>4</td><td><code>ledtest5.py</code></td><td><code>Jetson.GPIO</code></td>
+                  <td>2 (BOARD 7, 33)</td><td>Keyboard-driven via <code>curses</code></td>
+                  <td>Validate independent two-channel control</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 class="title is-5">v1 &mdash; two-pin combinatorial encoding</h4>
+        <p>
+          The first integrated design had only two output lines available and needed to represent
+          three zones. It used a combinatorial encoding, where zone identity is carried by the
+          <em>pair</em> of pin states rather than by a dedicated line:
+        </p>
+
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Zone active</th><th>Pin 1 (BOARD 7)</th><th>Pin 2 (BOARD 33)</th></tr></thead>
+            <tbody>
+              <tr><td>Top</td><td class="state-high">HIGH</td><td class="state-high">HIGH</td></tr>
+              <tr><td>Middle</td><td class="state-high">HIGH</td><td class="state-low">LOW</td></tr>
+              <tr><td>Bottom</td><td class="state-low">LOW</td><td class="state-high">HIGH</td></tr>
+              <tr><td>None</td><td class="state-low">LOW</td><td class="state-low">LOW</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The encoding is unambiguous only while exactly one zone is active. With multiple zones
+          active it degenerates: the intended resolution is a logical OR
+          (<code>pin1 = top OR middle</code>, <code>pin2 = top OR bottom</code>), which means
+          <em>top alone</em> and <em>middle&nbsp;+&nbsp;bottom</em> are indistinguishable at the
+          pins. Worse, the implementation wrote pins sequentially rather than in a single pass:
+        </p>
+
+        <div class="code-excerpt">
+<pre>if top_active:
+    GPIO.output(led_pin1, GPIO.HIGH)
+    GPIO.output(led_pin2, GPIO.HIGH)
+if middle_active:
+    GPIO.output(led_pin1, GPIO.HIGH)
+if bottom_active:
+    GPIO.output(led_pin2, GPIO.HIGH)
+if (not middle_active):
+    GPIO.output(led_pin1, GPIO.LOW)
+if (not bottom_active):
+    GPIO.output(led_pin2, GPIO.LOW)</pre>
+          <span class="code-source">src/led_scripts/nozzle_sim_led.py &mdash; v1, superseded</span>
+        </div>
+
+        <p>
+          Because the trailing clears are unconditional on <code>top_active</code>, a frame in
+          which only the top zone is active first drives both pins HIGH and then immediately pulls
+          both LOW — the top zone can never actually hold its output. This class of failure is
+          intrinsic to resolving a shared line across sequential writes.
+        </p>
+
+        <h4 class="title is-5">v2 &mdash; three-pin direct mapping (deployed)</h4>
+        <p>
+          The deployed system allocates one line per zone. Zone state and pin state become
+          identical, all three pins are written in a single pass per frame, and every one of the
+          eight multi-zone combinations is representable without conflict.
+        </p>
+
+        <div class="table-container">
+          <table class="table is-bordered is-striped is-fullwidth">
+            <thead><tr><th>Signal</th><th>BOARD pin</th><th>Zone</th><th>Drives</th></tr></thead>
+            <tbody>
+              <tr><td><code>led_pin1</code></td><td>7</td><td>Top</td><td>Nozzle 1</td></tr>
+              <tr><td><code>led_pin2</code></td><td>33</td><td>Middle</td><td>Nozzle 2</td></tr>
+              <tr><td><code>led_pin3</code></td><td>35</td><td>Bottom</td><td>Nozzle 3</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-excerpt">
+<pre>top_active, middle_active, bottom_active = region_active
+
+GPIO.output(led_pin1, GPIO.HIGH if top_active else GPIO.LOW)
+GPIO.output(led_pin2, GPIO.HIGH if middle_active else GPIO.LOW)
+GPIO.output(led_pin3, GPIO.HIGH if bottom_active else GPIO.LOW)</pre>
+          <span class="code-source">src/midas_scripts/run_combined.py &mdash; write_gpio_states()</span>
+        </div>
+
+        <div class="notification is-light note content">
+          <p>
+            <strong>Design note.</strong> The v1 encoding was not merely a bug — it was a correct
+            response to a two-line constraint that stopped being true. Adding a third line removed
+            the need for encoding entirely, which is why the deployed logic is three
+            unconditional writes and no truth table. The scripts remain in
+            <code>src/led_scripts/</code> as the hardware validation record.
+          </p>
+        </div>
+
+        <div class="notification is-light limitations content">
+          <p><strong>Limitations:</strong></p>
+          <ul>
+            <li>GPIO lines are logic-level signals, not nozzle drivers. Solenoid switching,
+                flyback protection, and valve actuation latency sit outside this system.</li>
+            <li>Pins are written every frame with no rate limiting, so a zone oscillating near the
+                coverage threshold switches its output at frame rate.</li>
+            <li>There is no readback or fault detection: the software cannot tell whether a nozzle
+                actually responded to a commanded state.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== REAL-TIME LOOP ====================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Real-Time Inference Loop</h2>
+    <div class="content">
+      <p>
+        All subsystems execute in sequence inside one continuous frame loop, with camera capture
+        handled by <code>imutils.VideoStream</code> on a separate thread to avoid blocking on I/O.
+        The entire loop body runs under a single <code>torch.no_grad()</code> context, and
+        cuDNN benchmark mode is enabled at startup so the runtime can select optimized convolution
+        algorithms for the fixed input resolution.
+      </p>
+
+      <p class="table-title"><strong>Table 8.</strong> Per-frame processing pipeline.</p>
+      <div class="table-container">
+        <table class="table is-bordered is-striped is-fullwidth">
+          <thead><tr><th>Step</th><th>Operation</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Camera frame capture</td><td>BGR via threaded <code>VideoStream</code></td></tr>
+            <tr><td>2</td><td>Colour conversion and normalization</td><td>BGR &rarr; RGB, scaled to [0, 1]</td></tr>
+            <tr><td>3</td><td>MiDaS depth inference</td><td>Bicubic upsample to native resolution</td></tr>
+            <tr><td>4</td><td>Depth-based background masking</td><td>Optional, <code>--use_depth_mask</code></td></tr>
+            <tr><td>5</td><td>YOLOv8 canopy detection</td><td>Raw or depth-masked frame</td></tr>
+            <tr><td>6</td><td>Detection union mask</td><td>Binary mask over all accepted boxes</td></tr>
+            <tr><td>7</td><td>Per-zone coverage computation</td><td>Three horizontal bands</td></tr>
+            <tr><td>8</td><td>Zone activation and GPIO output</td><td>Single-pass write to three pins</td></tr>
+            <tr><td>9</td><td>Annotated frame rendering</td><td>Overlays, labels, coverage percentages</td></tr>
+            <tr><td>10</td><td>Optional video write</td><td>Appended to output MP4</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Throughput is tracked with an exponential moving average
+        (<var>&alpha;</var>&nbsp;=&nbsp;0.1) rather than an instantaneous reading, so the reported
+        rate is not dominated by single-frame jitter:
+      </p>
+
+      <div class="code-excerpt">
+<pre>now = time.time()
+dt = max(now - last_time, 1e-6)
+fps_ema = 0.9 * fps_ema + 0.1 * (1.0 / dt)
+last_time = now</pre>
+        <span class="code-source">src/midas_scripts/run_combined.py</span>
+      </div>
+
+      <p>
+        For diagnostics the annotated RGB frame can be rendered beside a normalized depth heatmap
+        (OpenCV <code>COLORMAP_INFERNO</code>, brighter = closer). Active zones are filled with a
+        semi-transparent green overlay (<var>&alpha;</var>&nbsp;=&nbsp;0.3) and outlined green;
+        inactive zones are outlined red; detection boxes are drawn blue. This annotated stream is
+        what is written to disk for post-hoc review of each experimental run.
+      </p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ============================ RESULTS ============================ -->
+<!-- ==================================================================
+     RESULTS SCAFFOLD — every value below is a placeholder.
+     Replace each `<span class="todo">…</span>` with measured data before
+     publishing. Do not present this section publicly while TODOs remain.
+     ================================================================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Results</h2>
+    <div class="content">
+
+      <div class="notification is-light limitations content">
+        <p>
+          <strong>Evaluation in progress.</strong> The tables below define the measurement
+          protocol; entries marked <span class="todo">TODO</span> are not yet collected. No
+          numbers in this section should be cited until they are filled in.
+        </p>
+      </div>
+
+      <h3 class="title is-4">Depth model throughput on target hardware</h3>
+      <p>
+        Both DPT variants timed on the deployment Jetson under identical camera input, measured
+        as EMA frame rate over the full pipeline.
+      </p>
+      <div class="table-container">
+        <table class="table is-bordered is-striped is-fullwidth">
+          <thead>
+            <tr><th>Model variant</th><th>Backbone params</th><th>Depth-only latency (ms)</th>
+                <th>Full-pipeline FPS</th><th>Peak GPU memory</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dpt_swin2_tiny_256</code></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+            </tr>
+            <tr>
+              <td><code>dpt_beit_large_512</code></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="title is-4">Zone activation accuracy</h3>
+      <p>
+        Per-zone confusion against hand-labelled ground truth on held-out field footage, scored
+        frame-by-frame on the binary Active/Inactive decision.
+      </p>
+      <div class="table-container">
+        <table class="table is-bordered is-striped is-fullwidth">
+          <thead>
+            <tr><th>Zone</th><th>TP</th><th>TN</th><th>FP</th><th>FN</th>
+                <th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Top (Nozzle 1)</td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+            <tr><td>Middle (Nozzle 2)</td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+            <tr><td>Bottom (Nozzle 3)</td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="title is-4">Effect of depth-based background masking</h3>
+      <p>
+        Detection quality with <code>--detect_on_depth_mask</code> enabled versus disabled,
+        isolating whether depth gating actually suppresses out-of-row false positives.
+      </p>
+      <div class="table-container">
+        <table class="table is-bordered is-striped is-fullwidth">
+          <thead>
+            <tr><th>Configuration</th><th>Precision</th><th>Recall</th>
+                <th>False activations / min</th><th>Added latency (ms)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Raw frame &rarr; detector</td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+            <tr><td>Depth-masked frame &rarr; detector</td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="title is-4">Calibration error against ground-truth distance</h3>
+      <p>
+        Refined power-law estimate versus tape-measured standoff across a distance sweep. The
+        calibration point itself (2&nbsp;ft) is exact by construction; the question is how the
+        estimate degrades away from it.
+      </p>
+      <div class="table-container">
+        <table class="table is-bordered is-striped is-fullwidth">
+          <thead>
+            <tr><th>True distance (ft)</th><th>Linear estimate (ft)</th>
+                <th>Refined estimate (ft)</th><th>Absolute error (ft)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1.0</td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+            <tr><td>2.0 <em>(calibration point)</em></td><td>2.00</td><td>2.00</td><td>0.00</td></tr>
+            <tr><td>3.0</td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+            <tr><td>4.0</td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+            <tr><td>6.0</td><td><span class="todo">TODO</span></td>
+              <td><span class="todo">TODO</span></td><td><span class="todo">TODO</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- =========================== TECH STACK =========================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Tech Stack</h2>
+
+    <div class="tech-stack-row">
+      <div class="tech-stack-label">Deep learning</div>
+      <div class="tags">
+        <span class="tag">torch &ge; 2.0.0</span>
+        <span class="tag">torchvision &ge; 0.15.0</span>
+        <span class="tag">CUDA</span>
+        <span class="tag">cuDNN</span>
+        <span class="tag">FP16</span>
+      </div>
+    </div>
+
+    <div class="tech-stack-row">
+      <div class="tech-stack-label">Depth estimation</div>
+      <div class="tags">
+        <span class="tag">MiDaS</span>
+        <span class="tag">DPT</span>
+        <span class="tag">timm &ge; 0.9.0</span>
+        <span class="tag">Swin Transformer V2</span>
+        <span class="tag">BEiT ViT-L/16</span>
+      </div>
+    </div>
+
+    <div class="tech-stack-row">
+      <div class="tech-stack-label">Object detection</div>
+      <div class="tags">
+        <span class="tag">ultralytics &ge; 8.0.0</span>
+        <span class="tag">YOLOv8</span>
+      </div>
+    </div>
+
+    <div class="tech-stack-row">
+      <div class="tech-stack-label">Computer vision</div>
+      <div class="tags">
+        <span class="tag">opencv-python &ge; 4.8.0</span>
+        <span class="tag">numpy &ge; 1.24.0</span>
+        <span class="tag">imutils &ge; 0.5.4</span>
+      </div>
+    </div>
+
+    <div class="tech-stack-row">
+      <div class="tech-stack-label">Hardware &amp; I/O</div>
+      <div class="tags">
+        <span class="tag">NVIDIA Jetson</span>
+        <span class="tag">Jetson.GPIO &ge; 2.1.0</span>
+        <span class="tag">libgpiod</span>
+        <span class="tag">curses</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ============================== TEAM ============================== -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Team</h2>
+    <div class="team-list">
+      <div class="team-row">
+        <div class="team-name">
+          <a href="https://www.linkedin.com/in/ivan-torriani-3b875a331/">Ivan Torriani</a>
+        </div>
+        <div class="team-role">
+          Lead Researcher &mdash; depth estimation pipeline, calibration procedure, zone
+          integration logic, GPIO actuation, and Jetson deployment.
+        </div>
+      </div>
+      <div class="team-row">
+        <div class="team-name">Dr. Fahim Khan</div>
+        <div class="team-role">
+          Principal Investigator &mdash; research direction and supervision.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ========================== DOCUMENTATION ========================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Documentation &amp; Resources</h2>
+    <div class="content resource-list">
+      <ul>
+        <li><a href="docs/methods_midas.md">Methods: Monocular Depth Estimation Pipeline</a>
+            &mdash; full write-up of the MiDaS/DPT subsystem, calibration, and zone analysis.</li>
+        <li><a href="docs/methods_led.md">Methods: GPIO-Based Nozzle Activation System</a>
+            &mdash; hardware platform, validation progression, and actuation mapping.</li>
+        <li><a href="https://github.com/ivantorriani/tsmg-2026">Source repository</a>
+            &mdash; <code>src/midas_scripts/</code> (perception) and
+            <code>src/led_scripts/</code> (actuation and hardware validation).</li>
+        <li><a href="requirements.txt"><code>requirements.txt</code></a>
+            &mdash; full dependency set for <code>run_combined.py</code>.</li>
+      </ul>
+
+      <h3 class="title is-5">References</h3>
+      <ul>
+        <li>Ranftl, R., Lasinger, K., Hafner, D., Schindler, K., &amp; Koltun, V. (2020).
+            Towards robust monocular depth estimation: Mixing datasets for zero-shot cross-dataset
+            transfer. <em>IEEE TPAMI</em>.</li>
+        <li>Ranftl, R., Bochkovskiy, A., &amp; Koltun, V. (2021).
+            Vision Transformers for Dense Prediction. <em>ICCV 2021</em>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <p>
+    Depth-Guided Computer Vision for Precision Agricultural Fertilizer Application &middot;
+    TSMG 2026
+  </p>
+  <p>
+    Page design adapted from the
+    <a href="https://nerfies.github.io/">Nerfies</a> project template, used under
+    <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+  </p>
+</footer>
+
+</body>
+</html>

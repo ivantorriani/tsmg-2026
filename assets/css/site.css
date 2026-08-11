@@ -1,0 +1,469 @@
+/* ------------------------------------------------------------------
+   Depth-Guided Computer Vision for Precision Agricultural Fertilizer
+   Application — project page styles
+   ------------------------------------------------------------------ */
+
+:root {
+  --ink:        #1f2733;
+  --ink-soft:   #4a5568;
+  --ink-faint:  #5c6774;   /* >=4.5:1 on both #fff and the #eef1f5 caption bg */
+  --rule:       #e4e8ee;
+  --accent:     #2f6f4e;   /* canopy green */
+  --accent-dk:  #21503a;
+  --accent-bg:  #eef5f1;
+  --warn-bg:    #fdf6e7;
+  --warn-rule:  #e6c15a;
+  --code-bg:    #f6f8fa;
+  --page:       #ffffff;
+}
+
+body {
+  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4,
+.title, .subtitle {
+  font-family: 'Google Sans', 'Noto Sans', sans-serif;
+  color: var(--ink);
+}
+
+/* ---------- hero / publication header ---------- */
+
+.publication-title {
+  font-family: 'Castoro', Georgia, serif;
+  font-weight: 400;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+}
+
+.publication-venue {
+  color: var(--ink-faint);
+  font-size: 0.95rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 1.1rem;
+}
+
+.publication-authors {
+  margin-top: 1.1rem;
+  line-height: 1.9;
+}
+
+.publication-authors .author-block {
+  margin: 0 0.35rem;
+  white-space: nowrap;
+}
+
+.publication-authors a {
+  color: var(--accent);
+  border-bottom: 1px solid rgba(47, 111, 78, 0.35);
+}
+
+.publication-authors a:hover {
+  color: var(--accent-dk);
+  border-bottom-color: var(--accent-dk);
+}
+
+.author-role {
+  color: var(--ink-faint);
+  font-size: 0.85em;
+}
+
+.publication-affiliation {
+  color: var(--ink-soft);
+  margin-top: 0.5rem;
+}
+
+.publication-links {
+  margin-top: 1.6rem;
+}
+
+.publication-links .link-block {
+  display: inline-block;
+  margin: 0.25rem 0.2rem;
+}
+
+.publication-links .button.is-dark {
+  background-color: #363636;
+  transition: background-color 0.15s ease;
+}
+
+.publication-links .button.is-dark:hover {
+  background-color: var(--accent-dk);
+}
+
+/* ---------- teaser video ---------- */
+
+/* Source footage is portrait (1080x1920); cap height so it does not
+   dominate the hero, and centre it. */
+.hero.teaser video {
+  display: block;
+  margin: 0 auto;
+  max-height: 460px;
+  max-width: 100%;
+  width: auto;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: #000;
+}
+
+.teaser-caption {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  text-align: center;
+  margin-top: 0.9rem;
+  line-height: 1.6;
+}
+
+.section-divider {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: var(--rule);
+  height: 1px;
+}
+
+/* ---------- section + subsystem blocks ---------- */
+
+.section {
+  padding-top: 2.6rem;
+  padding-bottom: 2.6rem;
+}
+
+.content p,
+.content li {
+  line-height: 1.72;
+  color: var(--ink);
+}
+
+.subsystem-block {
+  padding: 1.6rem 0 0.4rem;
+  border-top: 1px solid var(--rule);
+  margin-top: 2rem;
+}
+
+.subsystem-block:first-of-type {
+  border-top: none;
+  margin-top: 0.6rem;
+}
+
+.subsystem-block > .title.is-4 {
+  color: var(--accent-dk);
+}
+
+.subsystem-index {
+  display: inline-block;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.72em;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: 4px;
+  padding: 0.18em 0.5em;
+  margin-right: 0.55rem;
+  vertical-align: 0.14em;
+}
+
+/* ---------- figures ---------- */
+
+.figure-block {
+  margin: 1.6rem 0 0.6rem;
+  text-align: center;
+}
+
+.figure-block svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.figure-caption {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.62;
+  margin-top: 0.85rem;
+  text-align: left;
+}
+
+.figure-caption strong {
+  color: var(--ink);
+}
+
+/* ---------- equations ---------- */
+
+.equation-block {
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 1.05rem 1.2rem;
+  margin: 1.15rem 0;
+  overflow-x: auto;
+}
+
+.equation-block .eq {
+  font-family: 'Castoro', Georgia, serif;
+  font-size: 1.12rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.equation-block .eq-where {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  white-space: normal;
+}
+
+.equation-block var {
+  font-style: italic;
+}
+
+/* ---------- code excerpts ---------- */
+
+.code-excerpt {
+  margin: 1.2rem 0;
+}
+
+.code-excerpt pre {
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px 6px 0 0;
+  padding: 0.95rem 1.1rem;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+
+.code-excerpt .code-source {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  background: #eef1f5;
+  border: 1px solid var(--rule);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 0.4rem 1.1rem;
+  display: block;
+}
+
+/* ---------- tables ---------- */
+
+.table-container {
+  margin: 1.2rem 0;
+  overflow-x: auto;
+}
+
+.table th {
+  background: #f3f5f8;
+  color: var(--ink);
+  font-size: 0.86rem;
+  letter-spacing: 0.015em;
+}
+
+.table td {
+  font-size: 0.89rem;
+  vertical-align: middle;
+}
+
+.table code {
+  font-size: 0.86em;
+  background: transparent;
+  color: var(--accent-dk);
+  padding: 0;
+}
+
+.table-title {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.4rem;
+}
+
+.table-title strong {
+  color: var(--ink);
+}
+
+/* Bulma's `.table td` (0,1,1) outranks a bare `.state-*` class (0,1,0),
+   so these must be qualified to take effect inside tables. */
+.state-high, .table td.state-high { color: #1f7a4d; font-weight: 600; }
+.state-low,  .table td.state-low  { color: #a2452f; font-weight: 600; }
+
+/* ---------- callouts ---------- */
+
+.notification.is-light.limitations {
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn-rule);
+  border-radius: 6px;
+  font-size: 0.91rem;
+  padding: 1.05rem 1.25rem;
+  margin-top: 1.4rem;
+}
+
+.notification.is-light.limitations p:first-child {
+  margin-bottom: 0.45rem;
+}
+
+.notification.is-light.note {
+  background: var(--accent-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  font-size: 0.91rem;
+  padding: 1.05rem 1.25rem;
+}
+
+/* pending-data marker for un-measured results */
+.todo {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.78rem;
+  color: #8a6d1f;
+  background: var(--warn-bg);
+  border: 1px dashed var(--warn-rule);
+  border-radius: 3px;
+  padding: 0.1em 0.45em;
+  white-space: nowrap;
+}
+
+/* ---------- tech stack ---------- */
+
+.tech-stack-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+
+.tech-stack-row:last-child { border-bottom: none; }
+
+.tech-stack-label {
+  flex: 0 0 11rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.tech-stack-row .tags { margin-bottom: 0; }
+
+.tech-stack-row .tag {
+  background: var(--accent-bg);
+  color: var(--accent-dk);
+  font-size: 0.83rem;
+  font-weight: 500;
+}
+
+/* ---------- team ---------- */
+
+.team-list { margin-top: 0.8rem; }
+
+.team-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+
+.team-row:last-child { border-bottom: none; }
+
+.team-name {
+  flex: 0 0 14rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.team-name a { color: var(--accent); }
+.team-name a:hover { color: var(--accent-dk); }
+
+/* Share the row so a long role sits beside the name instead of wrapping
+   below it, which would make rows inconsistent with each other. */
+.team-role {
+  flex: 1 1 18rem;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+/* ---------- resources + footer ---------- */
+
+.resource-list ul { margin-left: 1.1rem; }
+.resource-list li { margin-bottom: 0.45rem; }
+
+.content a { color: var(--accent); }
+.content a:hover { color: var(--accent-dk); text-decoration: underline; }
+
+.site-footer a { color: var(--accent); }
+.site-footer a:hover { text-decoration: underline; }
+
+.site-footer {
+  border-top: 1px solid var(--rule);
+  padding: 2rem 1.5rem 2.6rem;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+/* ---------- responsive ---------- */
+
+@media screen and (max-width: 768px) {
+  .publication-title { font-size: 1.85rem !important; }
+  .publication-authors .author-block { display: block; white-space: normal; }
+  .tech-stack-label, .team-name { flex-basis: 100%; }
+  .section { padding-left: 1.1rem; padding-right: 1.1rem; }
+  .equation-block .eq { white-space: normal; }
+}
+
+/* ---------- dark mode ---------- */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink:       #e6e9ee;
+    --ink-soft:  #b0b8c4;
+    --ink-faint: #8791a0;
+    --rule:      #2c3440;
+    --accent:    #6ccb95;
+    --accent-dk: #9fe0bb;
+    --accent-bg: #1b2b23;
+    --warn-bg:   #2b2617;
+    --warn-rule: #8a7530;
+    --code-bg:   #161b22;
+    --page:      #0f1319;
+  }
+
+  /* These tables live inside `.content`, where Bulma's
+     `.content table thead th` (0,2,2) sets color:#363636 — unreadable on a
+     dark header. Qualify with `.content` to outrank it. */
+  .table thead th, .table thead td,
+  .content .table thead th, .content .table thead td {
+    background: #1a212b;
+    color: var(--ink);
+  }
+  /* Bulma sets `.table { background-color: #fff }`. Striped rows override it,
+     but unstriped (odd) rows are transparent and would expose white behind
+     near-white text — so the table itself must go transparent too. */
+  .table { background-color: transparent; }
+  .table, .table td, .table th { border-color: var(--rule) !important; color: var(--ink); }
+  .state-high, .table td.state-high { color: #6ccb95; }
+  .state-low,  .table td.state-low  { color: #e08a6b; }
+  .table.is-striped tbody tr:not(.is-selected):nth-child(even) { background: #141a22; }
+  /* Bulma scopes its typography under `.content` (e.g. `.content h4`,
+     `.content strong`, `.content pre` at 0,1,1), which outranks bare element
+     or single-class selectors. Every dark-mode text override below must be
+     qualified to match, or it silently loses and leaves #363636/#4a4a4a. */
+  .content h1, .content h2, .content h3,
+  .content h4, .content h5, .content h6,
+  .content strong, .content b,
+  .content blockquote,
+  .title, .subtitle { color: var(--ink); }
+
+  .content pre, .content .code-excerpt pre, .code-excerpt pre { color: var(--ink); }
+
+  .code-excerpt .code-source { background: #1a212b; }
+  .publication-links .button.is-dark { background-color: #2b333f; }
+  .tech-stack-row .tag { background: var(--accent-bg); color: var(--accent-dk); }
+  .todo { color: #d8bd6a; }
+  .hero.teaser video { border-color: var(--rule); }
+}
